@@ -31,7 +31,7 @@ function getClickhouseType(value: Table | Column): "Identifier" {
 }
 
 function createQuery() {
-    const query: string[] = [];
+    const query: (string | string[])[] = [];
     const parameters: Record<"table" | "column", string[]> = {
         table: [],
         column: [],
@@ -41,6 +41,18 @@ function createQuery() {
         return `${type}_${index}`;
     }
 
+    function parameterise(value: Table | Column): string {
+        const valueType = getValueType(value);
+        const parameterName = buildParameterName(valueType, parameters[valueType].length);
+        const clickhouseType = getClickhouseType(value);
+
+        const parameter = `{${parameterName}: ${clickhouseType}}`;
+
+        parameters[valueType].push(getValue(value));
+
+        return parameter;
+    }
+
     return {
         push(value: string | Table | Column) {
             if (typeof value === "string") {
@@ -48,20 +60,27 @@ function createQuery() {
                 return this;
             }
 
-            const valueType = getValueType(value);
-            const parameterName = buildParameterName(valueType, parameters[valueType].length);
-            const clickhouseType = getClickhouseType(value);
+            query.push(parameterise(value));
 
-            const parameter = `{${parameterName}: ${clickhouseType}}`;
-            query.push(parameter);
+            return this;
+        },
 
-            parameters[valueType].push(getValue(value));
+        list(list: Table[] | Column[]) {
+            query.push(list.map(parameterise));
 
             return this;
         },
 
         build(options?: { semi?: boolean }) {
-            let queryStr = query.join(" ");
+            let queryStr = query
+                .map((part) => {
+                    if (typeof part === "string") {
+                        return part;
+                    }
+
+                    return part.join(", ");
+                })
+                .join(" ");
 
             if (options?.semi !== false) {
                 queryStr += ";";
@@ -145,9 +164,7 @@ export function select(...cols: Column[]) {
 
             // Begin select statement with columns
             query.push("SELECT");
-            for (const column of columns) {
-                query.push(column);
-            }
+            query.list(columns);
 
             // Select table that the query is for
             query.push("FROM");
