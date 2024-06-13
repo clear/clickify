@@ -1,6 +1,4 @@
 <div align="center">
-    # Clickify
-
-
-    **Secure query builder for Clickhouse**
+    <h1>Clickify</h1>
+    <p><strong>Secure query builder for Clickhouse</strong></p>
 </div>
