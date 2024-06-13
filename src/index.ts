@@ -1,0 +1,4 @@
+/**
+ * Clickify.
+ */
+export const Clickify = {};
